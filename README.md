@@ -1,1 +1,1 @@
-# noisy-cgan
+# few-shot-cgan
