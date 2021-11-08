@@ -109,7 +109,7 @@ def main(args):
 
             print(
                 f"[{epoch+1}/{args.niter}][{i}/{len(dataloader)}] Loss D: {errD.item():.4f} Loss_G {errG.item():.4f}"
-                + f"D(x): {D_x:.4f} D(g(z)): {D_G_z1:.4f} / {D_G_z2:.4f}"
+                + f" D(x): {D_x:.4f} D(g(z)): {D_G_z1:.4f} / {D_G_z2:.4f}"
             )
 
             if i % 100 == 0:

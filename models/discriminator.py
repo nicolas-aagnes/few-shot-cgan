@@ -46,16 +46,22 @@ class ConditionalDiscriminator(nn.Module):
             nn.BatchNorm2d(num_features * 8),
             nn.LeakyReLU(0.2, inplace=True),
             nn.Conv2d(num_features * 8, 1, 4, 1, 0, bias=False),
+            nn.BatchNorm2d(num_features * 8),
+            nn.LeakyReLU(0.2, inplace=True),
         )
 
-        self.linear = nn.Linear(
-            64 + num_classes, 1
-        )  # This 64 is hardcoded as of right now.
+        # Hardcode 64 layers (feature map output from main is 8x8)
+        self.mlp = nn.Sequential(
+            nn.Linear(64 + num_classes, 64),
+            nn.BatchNorm1d(64),
+            nn.LeakyReLU(0.2, inplace=True),
+            nn.Linear(64, 1),
+        )
 
     def forward(self, input):
         images, one_hot_labels = input
         batch_size = images.shape[0]
         embeddings = self.main(images).view(batch_size, -1)
         conditional_embedding = torch.hstack((embeddings, one_hot_labels))
-        probs = torch.sigmoid(self.linear(conditional_embedding)).squeeze()
+        probs = torch.sigmoid(self.mlp(conditional_embedding)).squeeze()
         return probs
