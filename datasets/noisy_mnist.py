@@ -28,6 +28,8 @@ class NoisyMNIST(MNIST):
             download=True,
         )
 
+        dataset_size = dataset_size // 10 * 10
+
         # MNIST images are greyscale.
         self.num_channels = 1
         self.output_shape = 28
@@ -37,13 +39,17 @@ class NoisyMNIST(MNIST):
 
         assert dataset_size <= 60000, "There are only 60k images in the MNIST dataset."
 
-        # Select dataset of correct size.
-        self.data = self.data[:dataset_size]
-        self.targets = self.targets[:dataset_size]
+        # Get all indices with label 1. Select num_per_class elements of that.
+        num_images_per_class = dataset_size // 10
 
-        # Sort the dataset.
-        self.targets, indices = torch.sort(self.targets)
-        self.data = self.data[indices]
+        images, targets = [], []
+        for i in range(10):
+            indices = np.random.choice(
+                (self.labels == i).nonzero(), num_images_per_class, replace=False
+            )
+            images.append(self.data[indices])
+            targets.append(self.targets[indices])
+        self.data, self.targets = torch.stack(images), torch.stack(targets)
 
         # Create noisy targets.
         num_noisy_targets = int(dataset_size * noise_level)
