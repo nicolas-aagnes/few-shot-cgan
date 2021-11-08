@@ -108,19 +108,10 @@ def main(args):
             optimizerG.step()
 
             print(
-                "[%d/%d][%d/%d] Loss_D: %.4f Loss_G: %.4f D(x): %.4f D(G(z)): %.4f / %.4f"
-                % (
-                    epoch,
-                    args.niter,
-                    i,
-                    len(dataloader),
-                    errD.item(),
-                    errG.item(),
-                    D_x,
-                    D_G_z1,
-                    D_G_z2,
-                )
+                f"[{epoch+1}/{args.niter}][{i}/{len(dataloader)}] Loss D: {errD.item():.4f} Loss_G {errG.item():.4f}"
+                + f"D(x): {D_x:.4f} D(g(z)): {D_G_z1:.4f} / {D_G_z2:.4f}"
             )
+
             if i % 100 == 0:
                 vutils.save_image(
                     real_cpu, "%s/real_samples.png" % args.outf, normalize=True

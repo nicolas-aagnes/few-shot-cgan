@@ -27,3 +27,35 @@ class Generator(nn.Module):
 
     def forward(self, input):
         return self.main(input)
+
+
+class ConditionalGenerator(nn.Module):
+    def __init__(
+        self, num_classes, num_z, num_features, num_out_channels, output_shape
+    ):
+        super().__init__()
+
+        self.linear = nn.Linear(num_classes + num_z, num_z)
+
+        self.main = nn.Sequential(
+            nn.ConvTranspose2d(num_z, num_features * 8, 4, 1, 0, bias=False),
+            nn.BatchNorm2d(num_features * 8),
+            nn.ReLU(True),
+            nn.ConvTranspose2d(num_features * 8, num_features * 4, 4, 2, 1, bias=False),
+            nn.BatchNorm2d(num_features * 4),
+            nn.ReLU(True),
+            nn.ConvTranspose2d(num_features * 4, num_features * 2, 4, 2, 1, bias=False),
+            nn.BatchNorm2d(num_features * 2),
+            nn.ReLU(True),
+            nn.ConvTranspose2d(num_features * 2, num_features, 4, 2, 1, bias=False),
+            nn.BatchNorm2d(num_features),
+            nn.ReLU(True),
+            nn.ConvTranspose2d(num_features, num_out_channels, 4, 2, 1, bias=False),
+            nn.AdaptiveAvgPool2d(output_shape),
+            nn.Tanh(),
+        )
+
+    def forward(self, input):
+        x = self.linear(input)  # shape is (batch_size, num_z)
+        x = x[..., None, None]
+        return self.main(x)

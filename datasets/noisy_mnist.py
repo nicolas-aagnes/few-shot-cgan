@@ -31,6 +31,7 @@ class NoisyMNIST(MNIST):
         # MNIST images are greyscale.
         self.num_channels = 1
         self.output_shape = 28
+        self.num_classes = 10
 
         assert self.data.shape[-2:] == (28, 28)
 
