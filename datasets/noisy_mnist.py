@@ -45,11 +45,13 @@ class NoisyMNIST(MNIST):
         images, targets = [], []
         for i in range(10):
             indices = np.random.choice(
-                (self.labels == i).nonzero(), num_images_per_class, replace=False
+                (self.targets == i).nonzero().squeeze(),
+                num_images_per_class,
+                replace=False,
             )
             images.append(self.data[indices])
             targets.append(self.targets[indices])
-        self.data, self.targets = torch.stack(images), torch.stack(targets)
+        self.data, self.targets = torch.cat(images), torch.cat(targets)
 
         # Create noisy targets.
         num_noisy_targets = int(dataset_size * noise_level)
