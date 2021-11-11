@@ -21,7 +21,6 @@ from models import utils
 def main(args):
     if args.logdir is None:
         args.logdir = f"./pretrain/dataset_size={args.dataset_size},noise_level={args.noise_level}"
-        args.logdir = "runs"
         Path(args.logdir).mkdir(exist_ok=True, parents=True)
 
     if args.seed is None:
@@ -71,10 +70,10 @@ def main(args):
     optimizerG = optim.Adam(netG.parameters(), lr=args.lr, betas=(args.beta1, 0.999))
 
     # Create fixed noise for evalutation images.
-    noise = torch.randn(100, args.nz, device=device)
+    noise = torch.randn(100, args.nz, device=device).float()
     labels = torch.arange(10).repeat_interleave(10).to(device)
     one_hot_labels = torch.nn.functional.one_hot(labels).to(device)
-    fixed_fake_conditional_noise = torch.hstack((noise, one_hot_labels))
+    fixed_fake_conditional_noise = torch.cat((noise, one_hot_labels.float()), dim=1)
 
     if args.dry_run:
         args.niter = 1
@@ -82,8 +81,8 @@ def main(args):
     for epoch in range(1, args.niter + 1):
         for i_step, (real_images, labels) in enumerate(dataloader):
             # Create one hot labels for generator (one_hot_labels) and discriminator (image_one_hot_labels).
-            one_hot_labels = torch.nn.functional.one_hot(labels, num_classes=10).to(
-                device
+            one_hot_labels = (
+                torch.nn.functional.one_hot(labels, num_classes=10).to(device).float()
             )
             image_one_hot_labels = one_hot_labels.clone()[..., None, None].expand(
                 -1, -1, 28, 28
@@ -99,17 +98,17 @@ def main(args):
                 (batch_size,), real_label, dtype=real_images.dtype, device=device
             )
 
-            output = netD(torch.hstack((real_images, image_one_hot_labels)))
+            output = netD(torch.cat((real_images, image_one_hot_labels), dim=1))
             errD_real = criterion(output, label)
             errD_real.backward()
             D_x = output.mean().item()
 
             # train with fake
-            noise = torch.randn(batch_size, args.nz, device=device)
-            conditional_noise = torch.hstack((noise, one_hot_labels))
+            noise = torch.randn(batch_size, args.nz, device=device).float()
+            conditional_noise = torch.cat((noise, one_hot_labels), dim=1)
             fake = netG(conditional_noise)
             label.fill_(fake_label)
-            output = netD(torch.hstack((fake.detach(), image_one_hot_labels)))
+            output = netD(torch.cat((fake.detach(), image_one_hot_labels), dim=1))
             errD_fake = criterion(output, label)
             errD_fake.backward()
             D_G_z1 = output.mean().item()
@@ -121,7 +120,7 @@ def main(args):
             #############################################################
             netG.zero_grad()
             label.fill_(real_label)  # fake labels are real for generator cost
-            output = netD(torch.hstack((fake, image_one_hot_labels)))
+            output = netD(torch.cat((fake, image_one_hot_labels), dim=1))
             errG = criterion(output, label)
             errG.backward()
             D_G_z2 = output.mean().item()
