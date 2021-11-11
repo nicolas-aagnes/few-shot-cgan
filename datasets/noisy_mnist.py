@@ -37,7 +37,9 @@ class NoisyMNIST(MNIST):
 
         assert self.data.shape[-2:] == (28, 28)
 
-        assert dataset_size <= 60000, "There are only 60k images in the MNIST dataset."
+        assert (
+            dataset_size <= 50000
+        ), "The MNIST dataset is slightly unbalanced so the max is set to 50k instead of 60k"
 
         # Get all indices with label 1. Select num_per_class elements of that.
         num_images_per_class = dataset_size // 10
