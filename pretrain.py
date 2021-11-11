@@ -138,11 +138,11 @@ def main(args):
             # Save model with visual images.
             if i_step % args.save_frequency == 0:
                 print(
-                    f"[{epoch}/{args.niter}][{i_step}/{len(dataloader)}] Loss D: {errD.item():.4f}"
-                    + f" Loss_G {errG.item():.4f} D(x): {D_x:.4f} D(g(z)): {D_G_z1:.4f} / {D_G_z2:.4f}"
+                    f"[{epoch}/{args.niter}][{i_step:>3}/{len(dataloader)}] ({current_iter:>4})   Loss_D: {errD.item():.3f}"
+                    + f"   Loss_G {errG.item():.3f}   D(x): {D_x:.3f}   D(g(z)): {D_G_z1:.3f} -> {D_G_z2:.3f}"
                 )
 
-                path = Path(args.logdir).joinpath(f"epoch{epoch}/iteration{i_step}")
+                path = Path(args.logdir).joinpath(f"iteration{current_iter}")
                 path.mkdir(exist_ok=True, parents=True)
 
                 fake = netG(fixed_fake_conditional_noise)
