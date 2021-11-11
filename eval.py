@@ -10,6 +10,8 @@ DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
 
 def main(args):
+    assert args.num_samples % 100 == 0
+
     # Load oracle.
     oracle = MNISTClassifier()
     oracle.load_state_dict(torch.load(args.oracle, map_location=DEVICE))
@@ -20,19 +22,25 @@ def main(args):
     netG.load_state_dict(torch.load(args.netG, map_location=DEVICE))
     netG.eval()
 
-    # Generate images.
-    num_samples = args.num_samples // 10 * 10
-    noise = torch.randn(num_samples, 100)
-    labels = torch.arange(10).repeat_interleave(num_samples // 10)
-    one_hot_labels = F.one_hot(labels)
-    images = netG(torch.hstack((noise, one_hot_labels)))
+    accuracy = 0.0
 
-    # Classify images.
-    transform = torchvision.transforms.Normalize((0.5,), (0.5,))
-    true_labels = oracle(transform(images))
-    print(
-        f"Accuracy {torch.sum(torch.argmax(true_labels, dim=1) == labels) / len(labels) * 100:.1f}%"
-    )
+    with torch.no_grad():
+        for _ in range(args.num_samples // 100):
+            # Test 100 at a time.
+            num_batch_samples = 100
+
+            # Generate images.
+            noise = torch.randn(num_batch_samples, 100)
+            labels = torch.arange(10).repeat_interleave(num_batch_samples // 10)
+            one_hot_labels = F.one_hot(labels)
+            images = netG(torch.hstack((noise, one_hot_labels)))
+
+            # Classify images.
+            transform = torchvision.transforms.Normalize((0.5,), (0.5,))
+            true_labels = oracle(transform(images))
+            accuracy += torch.sum(torch.argmax(true_labels, dim=1) == labels)
+
+    print(f"Accuracy {accuracy / args.num_samples * 100:.1f}%")
 
 
 if __name__ == "__main__":
