@@ -60,13 +60,6 @@ def main(args):
 
     # Tensorboard writer.
     writer = SummaryWriter(log_dir=args.logdir, flush_secs=10)
-    for n_iter in range(100):
-        import numpy as np
-
-        writer.add_scalar("Loss/train", np.random.random(), n_iter)
-        writer.add_scalar("Loss/test", np.random.random(), n_iter)
-        writer.add_scalar("Accuracy/train", np.random.random(), n_iter)
-        writer.add_scalar("Accuracy/test", np.random.random(), n_iter)
 
     # GAN loss and labels.
     criterion = nn.BCELoss()
@@ -134,18 +127,21 @@ def main(args):
             D_G_z2 = output.mean().item()
             optimizerG.step()
 
-            # Print and log to tensorboard.
-            print(
-                f"[{epoch}/{args.niter}][{i_step}/{len(dataloader)}] Loss D: {errD.item():.4f}"
-                + f" Loss_G {errG.item():.4f} D(x): {D_x:.4f} D(g(z)): {D_G_z1:.4f} / {D_G_z2:.4f}"
-            )
+            # Log to tensorboard.
             current_iter = (epoch - 1) * len(dataloader) + i_step
-            print(current_iter)
             writer.add_scalar("Loss/D", errD.item(), current_iter)
-            # writer.add_scalar("Accuracy/test", np.random.random(), n_iter)
+            writer.add_scalar("Loss/G", errG.item(), current_iter)
+            writer.add_scalar("Probability/D(x)", D_x, current_iter)
+            writer.add_scalar("Probability/D(G(z_1))", D_G_z1, current_iter)
+            writer.add_scalar("Probability/D(G(z_2))", D_G_z2, current_iter)
 
             # Save model with visual images.
             if i_step % args.save_frequency == 0:
+                print(
+                    f"[{epoch}/{args.niter}][{i_step}/{len(dataloader)}] Loss D: {errD.item():.4f}"
+                    + f" Loss_G {errG.item():.4f} D(x): {D_x:.4f} D(g(z)): {D_G_z1:.4f} / {D_G_z2:.4f}"
+                )
+
                 path = Path(args.logdir).joinpath(f"epoch{epoch}/iteration{i_step}")
                 path.mkdir(exist_ok=True, parents=True)
 
@@ -171,10 +167,13 @@ if __name__ == "__main__":
 
     parser.add_argument("--dataroot", default="data", help="path to dataset")
     parser.add_argument(
-        "--dataset-size", default=50000, help="Number of real images to use"
+        "--dataset-size", default=50000, type=int, help="Number of real images to use"
     )
     parser.add_argument(
-        "--noise-level", default=0.0, help="Percentage of labels to randomize"
+        "--noise-level",
+        default=0.0,
+        type=float,
+        help="Percentage of labels to randomize",
     )
     parser.add_argument(
         "--num-workers", default=1, type=int, help="number of data loading workers"
@@ -207,7 +206,7 @@ if __name__ == "__main__":
         "--logdir", default=None, help="folder to output images and model checkpoints"
     )
     parser.add_argument(
-        "--save-frequency", default=50, help="number of batches between saves"
+        "--save-frequency", default=50, type=int, help="number of batches between saves"
     )
     parser.add_argument("--seed", type=int, help="manual seed")
 
