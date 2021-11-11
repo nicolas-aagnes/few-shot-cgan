@@ -5,6 +5,7 @@ import torch
 import torchvision
 import torch.nn.functional as F
 import torchmetrics
+import tqdm
 from torchvision.datasets.mnist import MNIST
 
 from models.generator import ConditionalGenerator
@@ -54,7 +55,7 @@ def main(args):
     kid = torchmetrics.KID().to(DEVICE)
 
     with torch.no_grad():
-        for _ in range(args.num_samples // num_batch_samples):
+        for _ in tqdm.tqdm(range(args.num_samples // num_batch_samples)):
             # Get random real images.
             real_images = torch.stack(
                 [
