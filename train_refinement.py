@@ -22,35 +22,6 @@ from models.classifier import Classifier
 from models import utils
 
 
-def train_step(netG, netD, netC):
-    # Assume netG, netD and netC are all pretrained.
-
-    # Sample z and y
-    true_labels = generate_random_labels()
-    one_hot_labels = F.one_hot(true_labels)
-    noise = torch.randn(batch_size, args.nz, device=device).float()
-    conditional_noise = torch.cat((noise, one_hot_labels), dim=1)
-    # Generate fake x = G(z|y)
-    fake_images = netG(conditional_noise)
-    # Train classifier on x and y.
-    predicted_labels = netC(fake_images)
-    lossC = criterion(true_labels, predicted_labels)
-    optimizerC.zero_grad()
-    lossC.backward()
-    optimizerC.step()
-
-    # Sample x from noisy mnist.
-    real_images
-    # Infer y from C(x)
-    labels = netC(real_images)
-    # Sample noise z.
-    one_hot_labels = F.one_hot(true_labels)
-    noise = torch.randn(batch_size, args.nz, device=device).float()
-    conditional_noise = torch.cat((noise, one_hot_labels), dim=1)
-
-    # Train cGAN
-
-
 def main(args):
     if args.logdir is None:
         args.logdir = (
