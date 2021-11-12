@@ -13,6 +13,7 @@ class NoisyMNIST(MNIST):
         dataset_size: int,
         noise_level: float,
         root: str,
+        train=True
     ):
         transform = transforms.Compose(
             [
@@ -23,7 +24,7 @@ class NoisyMNIST(MNIST):
 
         super().__init__(
             root=root,
-            train=True,
+            train=train,
             transform=transform,
             download=True,
         )

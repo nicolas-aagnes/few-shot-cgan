@@ -10,6 +10,7 @@ import torch.optim as optim
 import torch.utils.data
 import torch.nn.functional as F
 from torch.utils.tensorboard import SummaryWriter
+import torchvision
 import torchvision.utils as vutils
 import torchmetrics
 import numpy as np
@@ -20,6 +21,41 @@ from models.generator import ConditionalGenerator
 from models.discriminator import ConditionalDiscriminator
 from models.classifier import Classifier
 from models import utils
+from train_classifier import Net as MNISTClassifier
+
+
+def test_accuracy_classifier(netC, dataloader_test, device):
+    accuracy = torchmetrics.Accuracy().to(device)
+
+    for images, labels in dataloader_test:
+        images, labels = images.to(device), labels.to(device)
+        logits = netC(images)
+        accuracy.update(logits, labels)
+
+    return accuracy.compute().item()
+
+
+def test_accuracy_generator(netG, netO, device):
+    num_batch_samples = 1000
+    accuracy = torchmetrics.Accuracy().to(device)
+
+    with torch.no_grad():
+        for _ in range(10):  # Test on 10000 images.
+            # Generate images.
+            noise = torch.randn(num_batch_samples, 100, device=device)
+            labels = torch.arange(10, device=device).repeat_interleave(
+                num_batch_samples // 10
+            )
+            one_hot_labels = F.one_hot(labels).float()
+            fake_images = netG(torch.cat((noise, one_hot_labels), dim=1))
+
+            # Classify images.
+            true_logits = netO(fake_images)
+
+            # Compute metrics.
+            accuracy.update(labels, torch.argmax(true_logits, dim=1))
+
+    return accuracy.compute().item()
 
 
 def main(args):
@@ -43,11 +79,29 @@ def main(args):
     dataloader = torch.utils.data.DataLoader(
         dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers
     )
+    dataset_test = torchvision.datasets.MNIST(
+        root=args.dataroot,
+        train=False,
+        transform=utils.get_mnist_transform(),
+        download=True,
+    )
+    dataloader_test = torch.utils.data.DataLoader(
+        dataset_test,
+        batch_size=args.batch_size,
+        shuffle=True,
+        num_workers=args.num_workers,
+    )
 
     # Classifier network.
-    netC = Classifier()
+    netC = Classifier().to(device)
     if args.netC != "":
         netC.load_state_dict(torch.load(args.netC))
+
+    # Oracle network.
+    netO = MNISTClassifier()
+    netO.load_state_dict(torch.load(args.netO, map_location=device))
+    netO.to(device)
+    netO.eval()
 
     # Conditional Generator Network,
     netG = ConditionalGenerator(
@@ -89,18 +143,33 @@ def main(args):
     fixed_fake_conditional_noise = torch.cat((noise, one_hot_labels.float()), dim=1)
 
     # Pretrain classifier.
+    print("Pretraining classifier.")
+
+    accuracy = test_accuracy_classifier(netC, dataloader_test, device)
+    print(f"Starting accuracy: {accuracy * 100:.1f}")
+    writer.add_scalar("Pretrain/ClassifierAccuracy", accuracy, -1)
+
     for epoch in range(1, args.niter_pretrain_classifier + 1):
         for i_step, (real_images, labels) in enumerate(dataloader):
-            logits = netC(real_images)
-            lossC = F.cross_entropy(logits, labels)
+            logits = netC(real_images.to(device))
+            lossC = F.cross_entropy(logits, labels.to(device))
             netC.zero_grad()
             lossC.backward()
             optimizerC.step()
+
+        accuracy = test_accuracy_classifier(netC, dataloader_test, device)
+        print(
+            f"Epoch {epoch}/{args.niter_pretrain_classifier} accuracy: {accuracy * 100:.1f}"
+        )
+        writer.add_scalar("Pretrain/ClassifierAccuracy", accuracy, epoch)
+
+    print("Done pretraining classifier.\n\n")
 
     # Jointly train classifier and cGAN.
     for epoch in range(1, args.niter + 1):
         for i_step, (real_images, _) in enumerate(dataloader):
             batch_size = real_images.shape[0]
+            real_images = real_images.to(device)
             #############################################################
             # (1) Train classidier
             #############################################################
@@ -196,6 +265,16 @@ def main(args):
                 writer.add_scalar("Metric/IS", is_.compute()[0].item(), current_iter)
                 writer.add_scalar("Metric/FID", fid.compute().item(), current_iter)
                 writer.add_scalar("Metric/KID", kid.compute()[0].item(), current_iter)
+                writer.add_scalar(
+                    "Accuracy/Classifier",
+                    test_accuracy_classifier(netC, dataloader_test, device),
+                    current_iter,
+                )
+                writer.add_scalar(
+                    "Accuracy/Generator",
+                    test_accuracy_generator(netG, netO, device),
+                    current_iter,
+                )
 
                 path = Path(args.logdir).joinpath(f"iteration{current_iter}")
                 path.mkdir(exist_ok=True, parents=True)
@@ -242,7 +321,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--niter_pretrain_classifier",
         type=int,
-        default=5,
+        default=3,
         help="number of epochs to pretrain classifier for",
     )
     parser.add_argument(
@@ -255,6 +334,9 @@ if __name__ == "__main__":
         "--netC", default="", help="path to netC (to continue training)"
     )
     parser.add_argument(
+        "--netO", default="mnist_cnn.pth", help="path to oracle network"
+    )
+    parser.add_argument(
         "--netG", default="", help="path to netG (to continue training)"
     )
     parser.add_argument(
@@ -264,7 +346,7 @@ if __name__ == "__main__":
         "--logdir", default=None, help="folder to output images and model checkpoints"
     )
     parser.add_argument(
-        "--save-frequency", default=50, type=int, help="number of batches between saves"
+        "--save-frequency", default=25, type=int, help="number of batches between saves"
     )
     parser.add_argument("--seed", type=int, default=1, help="manual seed")
 

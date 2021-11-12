@@ -9,6 +9,7 @@ import torch.backends.cudnn as cudnn
 import torch.optim as optim
 import torch.utils.data
 from torch.utils.tensorboard import SummaryWriter
+import torchvision
 import torchvision.utils as vutils
 import torchmetrics
 from pathlib import Path
