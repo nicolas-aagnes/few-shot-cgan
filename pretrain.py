@@ -10,6 +10,7 @@ import torch.optim as optim
 import torch.utils.data
 from torch.utils.tensorboard import SummaryWriter
 import torchvision.utils as vutils
+import torchmetrics
 from pathlib import Path
 
 from datasets.noisy_mnist import NoisyMNIST
@@ -90,7 +91,7 @@ def main(args):
             #############################################################
             # (1) Update D network: maximize log(D(x)) + log(1 - D(G(z)))
             #############################################################
-            # Rrain with real images.
+            # Train with real images.
             netD.zero_grad()
             real_images = real_images.to(device)
             batch_size = real_images.shape[0]
@@ -103,12 +104,14 @@ def main(args):
             errD_real.backward()
             D_x = output.mean().item()
 
-            # train with fake
+            # Train with fake images.
             noise = torch.randn(batch_size, args.nz, device=device).float()
             conditional_noise = torch.cat((noise, one_hot_labels), dim=1)
-            fake = netG(conditional_noise)
+            fake_images = netG(conditional_noise)
             label.fill_(fake_label)
-            output = netD(torch.cat((fake.detach(), image_one_hot_labels), dim=1))
+            output = netD(
+                torch.cat((fake_images.detach(), image_one_hot_labels), dim=1)
+            )
             errD_fake = criterion(output, label)
             errD_fake.backward()
             D_G_z1 = output.mean().item()
@@ -120,11 +123,23 @@ def main(args):
             #############################################################
             netG.zero_grad()
             label.fill_(real_label)  # fake labels are real for generator cost
-            output = netD(torch.cat((fake, image_one_hot_labels), dim=1))
+            output = netD(torch.cat((fake_images, image_one_hot_labels), dim=1))
             errG = criterion(output, label)
             errG.backward()
             D_G_z2 = output.mean().item()
             optimizerG.step()
+
+            # Compute metrics.
+            real_images = utils.prepare_data_for_inception(real_images, device)
+            fake_images = utils.prepare_data_for_inception(fake_images, device)
+            is_ = torchmetrics.IS().to(device)
+            fid = torchmetrics.FID().to(device)
+            kid = torchmetrics.KID().to(device)
+            is_.update(fake_images)
+            fid.update(real_images, real=True)
+            fid.update(fake_images, real=False)
+            kid.update(real_images, real=True)
+            kid.update(fake_images, real=False)
 
             # Log to tensorboard.
             current_iter = (epoch - 1) * len(dataloader) + i_step
@@ -133,6 +148,9 @@ def main(args):
             writer.add_scalar("Probability/D(x)", D_x, current_iter)
             writer.add_scalar("Probability/D(G(z_1))", D_G_z1, current_iter)
             writer.add_scalar("Probability/D(G(z_2))", D_G_z2, current_iter)
+            writer.add_scalar("Metric/IS", is_.compute()[0].item(), current_iter)
+            writer.add_scalar("Metric/FID", fid.compute().item(), current_iter)
+            writer.add_scalar("Metric/KID", kid.compute()[0].item(), current_iter)
 
             # Save model with visual images.
             if i_step % args.save_frequency == 0:
@@ -144,10 +162,10 @@ def main(args):
                 path = Path(args.logdir).joinpath(f"iteration{current_iter}")
                 path.mkdir(exist_ok=True, parents=True)
 
-                fake = netG(fixed_fake_conditional_noise)
+                fakes = netG(fixed_fake_conditional_noise)
 
                 vutils.save_image(
-                    fake.detach(),
+                    fakes.detach(),
                     f"{path}/iteration{i_step}.png",
                     nrow=10,
                     normalize=True,
