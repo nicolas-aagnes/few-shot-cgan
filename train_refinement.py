@@ -53,7 +53,9 @@ def train_step(netG, netD, netC):
 
 def main(args):
     if args.logdir is None:
-        args.logdir = f"./pretrain/dataset_size={args.dataset_size},noise_level={args.noise_level}"
+        args.logdir = (
+            f"./refine/dataset_size={args.dataset_size},noise_level={args.noise_level}"
+        )
         Path(args.logdir).mkdir(exist_ok=True, parents=True)
 
     if args.seed is None:
