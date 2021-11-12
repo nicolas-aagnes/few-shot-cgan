@@ -129,18 +129,6 @@ def main(args):
             D_G_z2 = output.mean().item()
             optimizerG.step()
 
-            # Compute metrics.
-            real_images = utils.prepare_data_for_inception(real_images, device)
-            fake_images = utils.prepare_data_for_inception(fake_images, device)
-            is_ = torchmetrics.IS().to(device)
-            fid = torchmetrics.FID().to(device)
-            kid = torchmetrics.KID().to(device)
-            is_.update(fake_images)
-            fid.update(real_images, real=True)
-            fid.update(fake_images, real=False)
-            kid.update(real_images, real=True)
-            kid.update(fake_images, real=False)
-
             # Log to tensorboard.
             current_iter = (epoch - 1) * len(dataloader) + i_step
             writer.add_scalar("Loss/D", errD.item(), current_iter)
@@ -148,9 +136,6 @@ def main(args):
             writer.add_scalar("Probability/D(x)", D_x, current_iter)
             writer.add_scalar("Probability/D(G(z_1))", D_G_z1, current_iter)
             writer.add_scalar("Probability/D(G(z_2))", D_G_z2, current_iter)
-            writer.add_scalar("Metric/IS", is_.compute()[0].item(), current_iter)
-            writer.add_scalar("Metric/FID", fid.compute().item(), current_iter)
-            writer.add_scalar("Metric/KID", kid.compute()[0].item(), current_iter)
 
             # Save model with visual images.
             if i_step % args.save_frequency == 0:
@@ -158,6 +143,21 @@ def main(args):
                     f"[{epoch}/{args.niter}][{i_step:>3}/{len(dataloader)}] ({current_iter:>4})   Loss_D: {errD.item():.3f}"
                     + f"   Loss_G {errG.item():.3f}   D(x): {D_x:.3f}   D(g(z)): {D_G_z1:.3f} -> {D_G_z2:.3f}"
                 )
+
+                # Compute image metrics.
+                real_images = utils.prepare_data_for_inception(real_images, device)
+                fake_images = utils.prepare_data_for_inception(fake_images, device)
+                is_ = torchmetrics.IS().to(device)
+                fid = torchmetrics.FID().to(device)
+                kid = torchmetrics.KID(subset_size=args.batch_size).to(device)
+                is_.update(fake_images)
+                fid.update(real_images, real=True)
+                fid.update(fake_images, real=False)
+                kid.update(real_images, real=True)
+                kid.update(fake_images, real=False)
+                writer.add_scalar("Metric/IS", is_.compute()[0].item(), current_iter)
+                writer.add_scalar("Metric/FID", fid.compute().item(), current_iter)
+                writer.add_scalar("Metric/KID", kid.compute()[0].item(), current_iter)
 
                 path = Path(args.logdir).joinpath(f"iteration{current_iter}")
                 path.mkdir(exist_ok=True, parents=True)
