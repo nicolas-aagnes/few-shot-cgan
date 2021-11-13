@@ -65,7 +65,7 @@ def main(args):
 
             # Compute metrics.
             fake_images = utils.prepare_data_for_inception(fake_images)
-            accuracy.update(torch.argmax(true_labels, dim=1), labels)
+            accuracy.update(labels, torch.argmax(true_labels, dim=1))
             is_.update(fake_images)
             fid.update(real_images, real=True)
             fid.update(fake_images, real=False)

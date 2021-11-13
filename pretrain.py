@@ -9,6 +9,7 @@ import torch.backends.cudnn as cudnn
 import torch.optim as optim
 import torch.utils.data
 from torch.utils.tensorboard import SummaryWriter
+import torchvision
 import torchvision.utils as vutils
 import torchmetrics
 from pathlib import Path
@@ -225,7 +226,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--save-frequency", default=50, type=int, help="number of batches between saves"
     )
-    parser.add_argument("--seed", type=int, help="manual seed")
+    parser.add_argument("--seed", type=int, default=1, help="manual seed")
 
     args = parser.parse_args()
     main(args)

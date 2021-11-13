@@ -1,4 +1,5 @@
 import torch
+import torchvision.transforms as transforms
 
 
 def weights_init(m):
@@ -23,3 +24,12 @@ def prepare_data_for_inception(x, device):
     x.mul_(255).add_(0.5).clamp_(0, 255)
 
     return x.to(device).to(torch.uint8)
+
+
+def get_mnist_transform():
+    return transforms.Compose(
+        [
+            transforms.ToTensor(),
+            transforms.Normalize((0.5,), (0.5,)),
+        ]
+    )
