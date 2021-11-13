@@ -211,25 +211,25 @@ def main(args):
                 )
 
                 # Compute image metrics.
-                real_images = utils.prepare_data_for_inception(real_images, device)
-                fake_images = utils.prepare_data_for_inception(fake_images, device)
-                is_ = torchmetrics.IS().to(device)
-                fid = torchmetrics.FID().to(device)
-                kid = torchmetrics.KID(subset_size=args.batch_size).to(device)
-                is_.update(fake_images)
-                fid.update(real_images, real=True)
-                fid.update(fake_images, real=False)
-                kid.update(real_images, real=True)
-                kid.update(fake_images, real=False)
-                writer.add_scalar(
-                    "Pretrain/Metric/IS", is_.compute()[0].item(), current_iter
-                )
-                writer.add_scalar(
-                    "Pretrain/Metric/FID", fid.compute().item(), current_iter
-                )
-                writer.add_scalar(
-                    "Pretrain/Metric/KID", kid.compute()[0].item(), current_iter
-                )
+                # real_images = utils.prepare_data_for_inception(real_images, device)
+                # fake_images = utils.prepare_data_for_inception(fake_images, device)
+                # is_ = torchmetrics.IS().to(device)
+                # fid = torchmetrics.FID().to(device)
+                # kid = torchmetrics.KID(subset_size=args.batch_size).to(device)
+                # is_.update(fake_images)
+                # fid.update(real_images, real=True)
+                # fid.update(fake_images, real=False)
+                # kid.update(real_images, real=True)
+                # kid.update(fake_images, real=False)
+                # writer.add_scalar(
+                #     "Pretrain/Metric/IS", is_.compute()[0].item(), current_iter
+                # )
+                # writer.add_scalar(
+                #     "Pretrain/Metric/FID", fid.compute().item(), current_iter
+                # )
+                # writer.add_scalar(
+                #     "Pretrain/Metric/KID", kid.compute()[0].item(), current_iter
+                # )
 
     # Pretrain classifier.
     print("Pretraining classifier.")
@@ -341,19 +341,19 @@ def main(args):
                 )
 
                 # Compute image metrics.
-                real_images = utils.prepare_data_for_inception(real_images, device)
-                fake_images = utils.prepare_data_for_inception(fake_images, device)
-                is_ = torchmetrics.IS().to(device)
-                fid = torchmetrics.FID().to(device)
-                kid = torchmetrics.KID(subset_size=args.batch_size).to(device)
-                is_.update(fake_images)
-                fid.update(real_images, real=True)
-                fid.update(fake_images, real=False)
-                kid.update(real_images, real=True)
-                kid.update(fake_images, real=False)
-                writer.add_scalar("Metric/IS", is_.compute()[0].item(), current_iter)
-                writer.add_scalar("Metric/FID", fid.compute().item(), current_iter)
-                writer.add_scalar("Metric/KID", kid.compute()[0].item(), current_iter)
+                # real_images = utils.prepare_data_for_inception(real_images, device)
+                # fake_images = utils.prepare_data_for_inception(fake_images, device)
+                # is_ = torchmetrics.IS().to(device)
+                # fid = torchmetrics.FID().to(device)
+                # kid = torchmetrics.KID(subset_size=args.batch_size).to(device)
+                # is_.update(fake_images)
+                # fid.update(real_images, real=True)
+                # fid.update(fake_images, real=False)
+                # kid.update(real_images, real=True)
+                # kid.update(fake_images, real=False)
+                # writer.add_scalar("Metric/IS", is_.compute()[0].item(), current_iter)
+                # writer.add_scalar("Metric/FID", fid.compute().item(), current_iter)
+                # writer.add_scalar("Metric/KID", kid.compute()[0].item(), current_iter)
                 writer.add_scalar(
                     "Accuracy/Classifier",
                     test_accuracy_classifier(netC, dataloader_test, device),
@@ -365,21 +365,21 @@ def main(args):
                     current_iter,
                 )
 
-                path = Path(args.logdir).joinpath(f"iteration{current_iter}")
-                path.mkdir(exist_ok=True, parents=True)
+                # path = Path(args.logdir).joinpath(f"iteration{current_iter}")
+                # path.mkdir(exist_ok=True, parents=True)
 
-                fakes = netG(fixed_fake_conditional_noise)
+                # fakes = netG(fixed_fake_conditional_noise)
 
-                vutils.save_image(
-                    fakes.detach(),
-                    f"{path}/iteration{i_step}.png",
-                    nrow=10,
-                    normalize=True,
-                )
+                # vutils.save_image(
+                #     fakes.detach(),
+                #     f"{path}/iteration{i_step}.png",
+                #     nrow=10,
+                #     normalize=True,
+                # )
 
-                # Do checkpointing.
-                torch.save(netG.state_dict(), f"{path}/netG.pth")
-                torch.save(netD.state_dict(), f"{path}/netD.pth")
+                # # Do checkpointing.
+                # torch.save(netG.state_dict(), f"{path}/netG.pth")
+                # torch.save(netD.state_dict(), f"{path}/netD.pth")
 
 
 if __name__ == "__main__":
