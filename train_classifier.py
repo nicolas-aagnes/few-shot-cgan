@@ -6,6 +6,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 from torchvision import datasets, transforms
 from torch.optim.lr_scheduler import StepLR
+from tqdm import tqdm
 
 
 class Net(nn.Module):
@@ -31,6 +32,49 @@ class Net(nn.Module):
         x = self.dropout2(x)
         logits = self.fc2(x)
         return logits
+
+class GeneratedMNISTDataset(torch.utils.data.Dataset):
+    def __init__(self, model, size=60000, device='cpu'):
+        self.model = model
+        self.size = size
+        self.device = device
+
+        self.images, self.labels = self.generate_batched_data(size)
+
+    def generate_data_with_labels(self, labels, nz=100):
+        batch_size = len(labels)
+        noise = torch.randn(batch_size, nz).float()
+        one_hot_labels = (
+            torch.nn.functional.one_hot(labels, num_classes=10).float()
+        )
+        conditional_noise = torch.cat((noise, one_hot_labels), dim=1)
+
+        with torch.no_grad():
+          fake = self.model(conditional_noise.to(self.device))
+        return fake.cpu()
+
+    def generate_random_data(self, n=256, nz=100):
+        labels = torch.randint(0, 10, (n,), dtype=torch.int64)
+        return self.generate_data_with_labels(labels, nz=nz), labels
+
+    def generate_batched_data(self, n, bs=256):
+        all_ims = []
+        all_labels = []
+
+        for _ in tqdm(range((n+bs-1)//bs)):
+            ims, labels = self.generate_random_data(n=bs)
+            all_ims.append(ims)
+            all_labels.append(labels)
+
+        all_ims = torch.cat(all_ims)[:n]
+        all_labels = torch.cat(all_labels)[:n]
+        return all_ims, all_labels
+
+    def __len__(self):
+        return self.size
+
+    def __getitem__(self, idx):
+        return self.images[idx], self.labels[idx]
 
 
 def train(args, model, device, train_loader, optimizer, epoch):
@@ -147,6 +191,12 @@ def main():
         default=False,
         help="For Saving the current Model",
     )
+    parser.add_argument(
+        "--generated-data-model",
+        type=str,
+        default=None,
+        help="If set, will use this generator to create training data.",
+    )
     args = parser.parse_args()
     use_cuda = not args.no_cuda and torch.cuda.is_available()
 
@@ -164,7 +214,14 @@ def main():
     transform = transforms.Compose(
         [transforms.ToTensor(), transforms.Normalize((0.5,), (0.5,))]
     )
-    dataset1 = datasets.MNIST("data", train=True, download=True, transform=transform)
+
+    if args.generated_data_model is None:
+      dataset1 = datasets.MNIST("data", train=True, download=True, transform=transform)
+    else:
+      print(f"Loading generator from {args.generated_data_model}")
+      generator = torch.load(args.generated_data_model, map_location=device)
+      dataset1 = GeneratedMNISTDataset(generator, size=60000, device=device)
+
     dataset2 = datasets.MNIST("data", train=False, transform=transform)
     train_loader = torch.utils.data.DataLoader(dataset1, **train_kwargs)
     test_loader = torch.utils.data.DataLoader(dataset2, **test_kwargs)
