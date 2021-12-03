@@ -33,7 +33,7 @@ class ConditionalDiscriminator(nn.Module):
         super().__init__()
 
         self.main = nn.Sequential(
-            # nn.AdaptiveAvgPool2d(64),
+            # nn.AdaptiveAvgPool2d(28),
             nn.Conv2d(num_in_channels, num_features, 4, 2, 1, bias=False),
             nn.LeakyReLU(0.2, inplace=True),
             nn.Conv2d(num_features, num_features * 2, 4, 2, 1, bias=False),
