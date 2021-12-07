@@ -20,6 +20,7 @@ class ConditionalGenerator64(nn.Module):
         super().__init__()
 
         self.l0 = nn.Linear(nz + num_classes, nz)
+        self.relu0 = nn.ReLU(True)
         self.l1 = nn.Linear(nz, (bottom_width ** 2) * ngf)
         self.unfatten = nn.Unflatten(1, (ngf, bottom_width, bottom_width))
         self.block2 = GBlock(ngf, ngf >> 1, upsample=True)
@@ -35,6 +36,7 @@ class ConditionalGenerator64(nn.Module):
 
     def forward(self, x):
         h = self.l0(x)
+        h = self.relu0(h)
         h = self.l1(h)
         h = self.unfatten(h)
         h = self.block2(h)
@@ -46,7 +48,6 @@ class ConditionalGenerator64(nn.Module):
         h = self.c6(h)
         y = torch.tanh(h)
         return y
-
 
 
 class ConditionalDiscriminator64(nn.Module):

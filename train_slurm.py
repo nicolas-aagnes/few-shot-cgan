@@ -53,11 +53,12 @@ def train(args, cluster):
             transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
         ]
     )
-    dataset = FashionDataset(
-        root=args.dataroot,
-        annotation_file=os.path.join(args.dataroot, "list_attr_img.txt"),
-        transform=transform,
-    )
+    # dataset = FashionDataset(
+    #     root=args.dataroot,
+    #     annotation_file=os.path.join(args.dataroot, "list_attr_img.txt"),
+    #     transform=transform,
+    # )
+    dataset = CelebADataset(root="./data/celeba", transform=transform)
     dataloader = torch.utils.data.DataLoader(
         dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers
     )
@@ -84,7 +85,7 @@ def train(args, cluster):
         netD.parameters(), lr=args.lr, betas=(args.beta1, args.beta2)
     )
     optimizerG = optim.Adam(
-        netG.parameters(), lr=args.lr / args.lr_ratio, betas=(args.beta1, args.beta2)
+        netG.parameters(), lr=args.lr, betas=(args.beta1, args.beta2)
     )
 
     # Create fixed noise for evalutation images.
@@ -175,23 +176,23 @@ def train(args, cluster):
                 # writer.add_scalar("Metric/FID", fid.compute().item(), current_iter)
                 # writer.add_scalar("Metric/KID", kid.compute()[0].item(), current_iter)
 
-                path = Path(log_dir).joinpath(f"iteration{current_iter}")
+                path = Path(log_dir)  # .joinpath(f"iteration{current_iter}")
                 path.mkdir(exist_ok=True, parents=True)
 
                 fakes = netG(conditional_noise[:100])
 
                 vutils.save_image(
                     fakes.detach(),
-                    f"{path}/iteration{i_step}.png",
+                    f"{path}/iteration{current_iter}.png",
                     nrow=10,
                     normalize=True,
                 )
-                vutils.save_image(
-                    real_images[:100].detach(),
-                    f"{path}/iteration{i_step}_real.png",
-                    nrow=10,
-                    normalize=True,
-                )
+                # vutils.save_image(
+                #     real_images[:100].detach(),
+                #     f"{path}/iteration{i_step}_real.png",
+                #     nrow=10,
+                #     normalize=True,
+                # )
 
                 # Do checkpointing.
                 # torch.save(netG.state_dict(), f"{path}/netGceleba.pth")
@@ -215,7 +216,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--num_workers", default=16, type=int, help="number of data loading workers"
     )
-    parser.add_argument("--batch_size", type=int, default=512, help="input batch size")
+    parser.add_argument("--batch_size", type=int, default=128, help="input batch size")
     parser.add_argument(
         "--nz", type=int, default=128, help="size of the latent z vector"
     )
@@ -257,7 +258,7 @@ if __name__ == "__main__":
         help="beta2 for adam. default=0.999",
     )
     parser.add_argument(
-        "--save_frequency", default=20, type=int, help="number of batches between saves"
+        "--save_frequency", default=10, type=int, help="number of batches between saves"
     )
     parser.add_argument("--seed", type=int, default=1, help="manual seed")
     args = parser.parse_args()
